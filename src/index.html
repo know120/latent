@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"">
+
+<head>
+  <title>Transparent Chat Overlay</title>
+  <link rel="stylesheet" href="index.css">
+  <script src="script.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+</head>
+
+<body>
+  <div id="chat-container">
+    <!-- Chat messages will be appended here -->
+  </div>
+  <div id="input-container">
+    <input type="text" id="chat-input" placeholder="Type your message..." />
+  </div>
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const chatInput = document.getElementById('chat-input');
+
+    // Function to add a message to the chat
+    function addMessage(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
+      messageDiv.innerText = text;
+      chatContainer.appendChild(messageDiv);
+      // Scroll to the bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Simulate AI response (replace with real AI integration later)
+    function getAIResponse(userMessage) {
+      return `AI: You said "${userMessage}"`; // Placeholder response
+    }
+
+    // Handle input submission
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && chatInput.value.trim()) {
+        const userMessage = chatInput.value.trim();
+        addMessage(userMessage, 'user');
+        // Simulate AI response
+        const aiResponse = getAIResponse(userMessage);
+        setTimeout(() => addMessage(aiResponse, 'ai'), 500); // Delay for realism
+        chatInput.value = ''; // Clear input
+      }
+    });
+
+    // Initialize with a welcome message
+    addMessage('Hi there! How can I assist you today.', 'ai');
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,77 @@
+body {
+  background: rgba(0, 0, 0, 0.5);
+  /* Semi-transparent background */
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  user-select: none;
+  /* Prevent text selection in non-input areas */
+  -webkit-app-region: drag;
+  overflow: hidden; /* Prevent window scrollbars */
+  /* Make window draggable */
+}
+
+#chat-container {
+  flex: 1;
+  overflow-y: auto;
+  /* Scrollable chat area */
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.user-message {
+  background: #007bff;
+  /* Blue for user messages */
+  align-self: flex-end;
+}
+
+.ai-message {
+  background: #28a745;
+  /* Green for AI responses */
+  align-self: flex-start;
+}
+
+#input-container {
+  display: flex;
+  padding: 10px;
+  -webkit-app-region: no-drag;
+  /* Prevent input area from being draggable */
+}
+
+#chat-input {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.8);
+  color: black;
+  font-size: 14px;
+  outline: none;
+}
+
+#chat-input:focus {
+  background: rgba(255, 255, 255, 1);
+}
+
+/* Scrollbar styling */
+#chat-container::-webkit-scrollbar {
+  width: 5px;
+}
+
+#chat-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 5px;
+}
