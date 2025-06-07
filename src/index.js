@@ -1,62 +1,83 @@
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// Load environment variables
+require('dotenv').config();
+const API_KEY = process.env.GOOGLE_API_KEY;
+
+// Initialize Gemini API
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // Enable hot reloading during development
 if (process.argv.includes('--enable-hot-reload')) {
   require('electron-reload')(__dirname, {
-    electron: path.join(__dirname, 'node_modules', '.bin', 'electron'), // Path to Electron binary
-    hardResetMethod: 'exit', // Ensure full reload
-    ignored: /node_modules|[/\\]\./ // Ignore node_modules and hidden files
+    electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
+    hardResetMethod: 'exit',
+    ignored: /node_modules|[\\]\./
   });
 }
 
 function createWindow() {
-  // Create a browser window
+  // Create a browser window with 50% larger dimensions
   let win = new BrowserWindow({
     width: 600,
-    height: 400,
-    frame: false, // Remove window frame (no titlebar)
-    transparent: true, // Make window transparent
-    alwaysOnTop: true, // Keep window on top of others
-    skipTaskbar: true, // Hide from taskbar
+    height: 300,
+    frame: false,
+    resizable: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
     webPreferences: {
-      nodeIntegration: true, // Enable Node.js in renderer
-      contextIsolation: false, // Required for nodeIntegration
+      nodeIntegration: true,
+      contextIsolation: false,
     },
   });
 
   // Load the HTML file
   win.loadFile('src/index.html');
 
-  // Hide window from screen capture (works on some platforms)
+  // Hide window from screen capture
   win.setContentProtection(true);
 
-  // Make window movable by dragging
+  // Make window movable
   win.setMovable(true);
 
   // Prevent window from being resized
   win.setResizable(false);
 
-  // Optional: Add global shortcut to toggle window visibility
+  // Toggle window visibility with shortcut
   globalShortcut.register('CommandOrControl+Shift+H', () => {
     if (win.isVisible()) {
       win.hide();
     } else {
       win.show();
-      win.focus(); // Ensure window can accept input when shown
+      win.focus();
     }
   });
 
-  // Ensure input field can be focused when clicked
+  // Handle window focus
   win.on('blur', () => {
-    // Optionally minimize focus loss impact; adjust as needed
+    // Optionally minimize focus loss impact
   });
 
-  // Handle window close gracefully
+  // Handle window close
   win.on('closed', () => {
     win = null;
   });
 }
+
+// Handle Gemini API calls via IPC
+ipcMain.handle('send-to-gemini', async (event, userMessage, chatHistory) => {
+  try {
+    const chat = model.startChat({ history: chatHistory });
+    const result = await chat.sendMessage(userMessage);
+    return result.response.text();
+  } catch (error) {
+    throw new Error(`Gemini API error: ${error.message}`);
+  }
+});
 
 // Create window when app is ready
 app.whenReady().then(createWindow);
