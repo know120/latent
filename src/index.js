@@ -25,6 +25,7 @@ function createWindow() {
     width: 600,
     height: 300,
     frame: false,
+    // title: 'Latent Chat',
     resizable: false,
     transparent: true,
     alwaysOnTop: true,
@@ -46,6 +47,9 @@ function createWindow() {
 
   // Prevent window from being resized
   win.setResizable(false);
+
+  // Prevert title bar on focus
+  // win.setFocusable(false);
 
   // Toggle window visibility with shortcut
   globalShortcut.register('CommandOrControl+Shift+H', () => {

@@ -1,5 +1,5 @@
 body {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.1);
   /* Semi-transparent background */
   color: white;
   font-family: Arial, sans-serif;
@@ -8,21 +8,29 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* Make body take full viewport height */
   user-select: none;
-  /* Prevent text selection in non-input areas */
-  -webkit-app-region: drag;
-  overflow: hidden; /* Prevent window scrollbars */
-  /* Make window draggable */
+  overflow: hidden;
+  box-sizing: border-box;
+  /* Ensures padding and border are included in the element's total width and height */
 }
 
 #chat-container {
   flex: 1;
+  /* Allows this container to grow and fill available vertical space */
   overflow-y: auto;
+  /* Enables vertical scrolling for the chat messages within */
+}
+
+#chat-area {
+  flex: 1;
   /* Scrollable chat area */
+  min-height: 65vh;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  -webkit-app-region: drag;
 }
 
 .message {
@@ -33,15 +41,20 @@ body {
 }
 
 .user-message {
-  background: #007bff;
-  /* Blue for user messages */
+  background: rgba(60, 60, 60, 0.65);
   align-self: flex-end;
+  color: #f0f0f0;
+  /* Lighter text for better contrast on transparent bg */
+  border-bottom-right-radius: 0px;
+  /* Less rounded corner for the "tail" */
 }
 
 .ai-message {
-  background: #28a745;
-  /* Green for AI responses */
+  background: rgba(60, 60, 60, 0.65);
   align-self: flex-start;
+  color: #e0e0e0;
+  border-bottom-left-radius: 0px;
+  /* Less rounded corner for the "tail" */
 }
 
 #input-container {
@@ -54,16 +67,27 @@ body {
 #chat-input {
   flex: 1;
   padding: 8px;
-  border: none;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.8);
-  color: black;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Subtle border */
+  border-radius: 18px;
+  /* More rounded for a smoother look */
+  background: rgba(40, 40, 40, 0.7);
+  /* Darker, semi-transparent background */
+  color: #e0e0e0;
+  /* Light grey text color */
   font-size: 14px;
   outline: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  /* Smooth transitions */
 }
 
 #chat-input:focus {
-  background: rgba(255, 255, 255, 1);
+  background: rgba(55, 55, 55, 0.85);
+  /* Slightly lighter on focus */
+  border-color: rgba(0, 123, 255, 0.7);
+  /* Highlight border on focus, e.g., a blue tint */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  /* Optional: subtle glow on focus */
 }
 
 /* Scrollbar styling */
