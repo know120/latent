@@ -1,9 +1,11 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const dotenv = require('dotenv');
 
-// Load environment variables
-require('dotenv').config();
+// Load environment variables based on app context
+const envPath = path.join(__dirname, '..', '.env');
+dotenv.config({ path: envPath });
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 // Initialize Gemini API
