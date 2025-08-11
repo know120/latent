@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const dotenv = require('dotenv');
@@ -40,6 +40,9 @@ function createWindow() {
 
   // Load the HTML file
   win.loadFile('src/index.html');
+
+  // Remove the default menu
+  Menu.setApplicationMenu(null);
 
   // Hide window from screen capture
   win.setContentProtection(true);
