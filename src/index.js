@@ -24,14 +24,14 @@ if (process.argv.includes('--enable-hot-reload')) {
 function createWindow() {
   // Create a browser window with 50% larger dimensions
   let win = new BrowserWindow({
-    width: 600,
-    height: 300,
-    frame: false,
-    // title: 'Latent Chat',
-    resizable: false,
-    transparent: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
+    width: 800,
+    height: 600,
+    // frame: false,
+    title: 'Latent Chat',
+    resizable: true,
+    // transparent: true,
+    alwaysOnTop: false,
+    skipTaskbar: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -45,10 +45,10 @@ function createWindow() {
   win.setContentProtection(true);
 
   // Make window movable
-  win.setMovable(true);
+  // win.setMovable(true);
 
   // Prevent window from being resized
-  win.setResizable(false);
+  // win.setResizable(false);
 
   // Prevert title bar on focus
   // win.setFocusable(false);
