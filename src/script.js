@@ -6,29 +6,59 @@ const chatInput = document.getElementById('chat-input');
 const chatContainer = document.getElementById('chat-container');
 const sendButton = document.getElementById('send-button');
 
+// Selectors
+const providerSelect = document.getElementById('provider-select');
+const modelSelect = document.getElementById('model-select');
+
 // API Modal elements
 const apiModal = document.getElementById('api-modal');
+const setupProvider = document.getElementById('setup-provider');
+const apiKeyLabel = document.getElementById('api-key-label');
 const apiKeyInput = document.getElementById('api-key-input');
 const toggleVisibilityBtn = document.getElementById('toggle-api-visibility');
 const eyeIcon = toggleVisibilityBtn.querySelector('.eye-icon');
 const eyeOffIcon = toggleVisibilityBtn.querySelector('.eye-off-icon');
 const saveApiKeyButton = document.getElementById('save-api-key-button');
+const setupHelpText = document.getElementById('setup-help-text');
 
-// Model Selector elements
-const modelSelect = document.getElementById('model-select');
+// Provider Metadata
+const PROVIDERS = {
+  google: {
+    name: 'Google Gemini',
+    help: 'You can find your Gemini API key in the <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.',
+    label: 'Google API Key',
+    models: [
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }
+    ]
+  },
+  openai: {
+    name: 'OpenAI',
+    help: 'You can find your OpenAI API key in your <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a>.',
+    label: 'OpenAI API Key',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o mini' },
+      { id: 'o1-preview', name: 'o1 Preview' },
+      { id: 'o1-mini', name: 'o1 mini' }
+    ]
+  }
+};
+
+let currentConfig = null;
 
 // Function to add a message to the chat
 function addMessage(text, sender) {
   const messageDiv = document.createElement('div');
   messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
 
-  // Basic markdown-like formatting for newlines
   const formattedText = text.replace(/\n/g, '<br>');
   messageDiv.innerHTML = formattedText;
 
   chatArea.appendChild(messageDiv);
 
-  // Smooth scroll to bottom
   chatContainer.scrollTo({
     top: chatArea.scrollHeight,
     behavior: 'smooth'
@@ -41,7 +71,6 @@ let chatHistory = [
   { role: 'model', parts: [{ text: 'Welcome to Latent Chat! How can I assist you?' }] }
 ];
 
-// Display initial welcome message
 addMessage('Welcome to Latent Chat! How can I assist you?', 'ai');
 
 async function handleSendMessage() {
@@ -50,16 +79,14 @@ async function handleSendMessage() {
 
   const originalPlaceholder = chatInput.placeholder;
   addMessage(userMessage, 'user');
-  chatInput.value = ''; // Clear input
+  chatInput.value = '';
   chatInput.disabled = true;
   chatInput.placeholder = 'Thinking...';
 
   try {
-    // Send message to main process for Gemini API call
-    const aiResponse = await ipcRenderer.invoke('send-to-gemini', userMessage, chatHistory);
+    const aiResponse = await ipcRenderer.invoke('send-to-ai', userMessage, chatHistory);
     addMessage(aiResponse, 'ai');
 
-    // Update chat history
     chatHistory.push(
       { role: 'user', parts: [{ text: userMessage }] },
       { role: 'model', parts: [{ text: aiResponse }] }
@@ -73,40 +100,101 @@ async function handleSendMessage() {
   }
 }
 
-// Handle input submission
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    handleSendMessage();
-  }
-});
+function populateModels(providerId, selectedModel) {
+  const models = PROVIDERS[providerId].models;
+  modelSelect.innerHTML = '';
+  models.forEach(m => {
+    const option = document.createElement('option');
+    option.value = m.id;
+    option.textContent = m.name;
+    if (m.id === selectedModel) option.selected = true;
+    modelSelect.appendChild(option);
+  });
+}
 
-sendButton.addEventListener('click', handleSendMessage);
-
-// API Key & Model Logic
 async function initApp() {
-  const config = await ipcRenderer.invoke('get-config');
+  currentConfig = await ipcRenderer.invoke('get-config');
 
-  if (config.SELECTED_MODEL) {
-    modelSelect.value = config.SELECTED_MODEL;
-  }
+  providerSelect.value = currentConfig.activeProvider;
+  const activePConfig = currentConfig.providers[currentConfig.activeProvider];
+  populateModels(currentConfig.activeProvider, activePConfig.selectedModel);
 
-  if (!config.GOOGLE_API_KEY) {
-    apiModal.style.display = 'flex';
+  if (!activePConfig.apiKey) {
+    showSetupModal(currentConfig.activeProvider);
   } else {
     apiModal.style.display = 'none';
     chatInput.focus();
   }
 }
 
+function showSetupModal(providerId) {
+  const provider = PROVIDERS[providerId];
+  setupProvider.value = providerId;
+  apiKeyLabel.textContent = provider.label;
+  setupHelpText.innerHTML = provider.help;
+  apiKeyInput.value = currentConfig.providers[providerId].apiKey;
+  apiModal.style.display = 'flex';
+}
+
+providerSelect.addEventListener('change', async () => {
+  const providerId = providerSelect.value;
+  currentConfig.activeProvider = providerId;
+
+  const pConfig = currentConfig.providers[providerId];
+  populateModels(providerId, pConfig.selectedModel);
+
+  if (!pConfig.apiKey) {
+    showSetupModal(providerId);
+  } else {
+    await ipcRenderer.invoke('save-config', currentConfig);
+  }
+});
+
 modelSelect.addEventListener('change', async () => {
-  const modelName = modelSelect.value;
+  const modelId = modelSelect.value;
+  currentConfig.providers[currentConfig.activeProvider].selectedModel = modelId;
+  await ipcRenderer.invoke('save-config', currentConfig);
+});
+
+setupProvider.addEventListener('change', () => {
+  const providerId = setupProvider.value;
+  const provider = PROVIDERS[providerId];
+  apiKeyLabel.textContent = provider.label;
+  setupHelpText.innerHTML = provider.help;
+  apiKeyInput.value = currentConfig.providers[providerId].apiKey;
+});
+
+saveApiKeyButton.addEventListener('click', async () => {
+  const apiKey = apiKeyInput.value.trim();
+  const providerId = setupProvider.value;
+
+  if (!apiKey) {
+    alert('Please enter an API key.');
+    return;
+  }
+
+  saveApiKeyButton.disabled = true;
+  saveApiKeyButton.textContent = 'Saving...';
+
   try {
-    const result = await ipcRenderer.invoke('save-model', modelName);
-    if (!result.success) {
-      alert(`Error switching model: ${result.error}`);
+    currentConfig.activeProvider = providerId;
+    currentConfig.providers[providerId].apiKey = apiKey;
+
+    const result = await ipcRenderer.invoke('save-config', currentConfig);
+    if (result.success) {
+      apiModal.style.display = 'none';
+      providerSelect.value = providerId;
+      populateModels(providerId, currentConfig.providers[providerId].selectedModel);
+      addMessage(`Configuration for ${PROVIDERS[providerId].name} saved!`, 'ai');
+      chatInput.focus();
+    } else {
+      alert(`Error saving configuration: ${result.error}`);
     }
   } catch (error) {
     alert(`Error: ${error.message}`);
+  } finally {
+    saveApiKeyButton.disabled = false;
+    saveApiKeyButton.textContent = 'Save Configuration';
   }
 });
 
@@ -117,35 +205,14 @@ toggleVisibilityBtn.addEventListener('click', () => {
   eyeOffIcon.style.display = isPassword ? 'block' : 'none';
 });
 
-saveApiKeyButton.addEventListener('click', async () => {
-  const apiKey = apiKeyInput.value.trim();
-  if (!apiKey) return;
-
-  saveApiKeyButton.disabled = true;
-  saveApiKeyButton.textContent = 'Saving...';
-
-  try {
-    const result = await ipcRenderer.invoke('save-api-key', apiKey);
-    if (result.success) {
-      apiModal.style.display = 'none';
-      addMessage('API Key saved successfully! You can now start chatting.', 'ai');
-      chatInput.focus();
-    } else {
-      alert(`Error saving API key: ${result.error}`);
-    }
-  } catch (error) {
-    alert(`Error: ${error.message}`);
-  } finally {
-    saveApiKeyButton.disabled = false;
-    saveApiKeyButton.textContent = 'Save Key';
-  }
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') handleSendMessage();
 });
+
+sendButton.addEventListener('click', handleSendMessage);
 
 apiKeyInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    saveApiKeyButton.click();
-  }
+  if (e.key === 'Enter') saveApiKeyButton.click();
 });
 
-// Initialize on load
 initApp();

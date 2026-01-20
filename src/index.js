@@ -2,25 +2,51 @@ const { app, BrowserWindow, globalShortcut, ipcMain, Menu } = require('electron'
 const fs = require('fs');
 const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 const dotenv = require('dotenv');
 
-// Load environment variables based on app context
+// Load environment variables
 const envPath = path.join(__dirname, '..', '.env');
 dotenv.config({ path: envPath });
 
 const configPath = path.join(app.getPath('userData'), 'config.json');
 
+const DEFAULT_CONFIG = {
+  activeProvider: 'google',
+  providers: {
+    google: {
+      apiKey: process.env.GOOGLE_API_KEY || '',
+      selectedModel: 'gemini-2.5-flash'
+    },
+    openai: {
+      apiKey: process.env.OPENAI_API_KEY || '',
+      selectedModel: 'gpt-4o'
+    }
+  }
+};
+
 function getConfig() {
-  const config = {
-    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || null,
-    SELECTED_MODEL: 'gemini-2.5-flash'
-  };
+  let config = { ...DEFAULT_CONFIG };
 
   if (fs.existsSync(configPath)) {
     try {
-      const storedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (storedConfig.GOOGLE_API_KEY) config.GOOGLE_API_KEY = storedConfig.GOOGLE_API_KEY;
-      if (storedConfig.SELECTED_MODEL) config.SELECTED_MODEL = storedConfig.SELECTED_MODEL;
+      const stored = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+
+      // Migration and merging
+      if (stored.GOOGLE_API_KEY) {
+        config.providers.google.apiKey = stored.GOOGLE_API_KEY;
+      }
+      if (stored.SELECTED_MODEL && stored.activeProvider === 'google') {
+        config.providers.google.selectedModel = stored.SELECTED_MODEL;
+      }
+
+      // Deep merge for providers
+      if (stored.activeProvider) config.activeProvider = stored.activeProvider;
+      if (stored.providers) {
+        for (const p in stored.providers) {
+          config.providers[p] = { ...config.providers[p], ...stored.providers[p] };
+        }
+      }
     } catch (e) {
       console.error('Error reading config file:', e);
     }
@@ -28,28 +54,42 @@ function getConfig() {
   return config;
 }
 
-let genAI;
-let model;
+function saveConfig(config) {
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+}
 
-function initializeGemini(apiKey, modelName = 'gemini-2.5-flash') {
-  if (apiKey) {
-    genAI = new GoogleGenerativeAI(apiKey);
-    model = genAI.getGenerativeModel({ model: modelName });
+let aiClient = null;
+let aiModel = null;
+
+function initializeAI(provider, apiKey, modelName) {
+  if (!apiKey) {
+    aiClient = null;
+    aiModel = null;
+    return;
+  }
+
+  try {
+    if (provider === 'google') {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      aiClient = genAI;
+      aiModel = genAI.getGenerativeModel({ model: modelName });
+    } else if (provider === 'openai') {
+      const openai = new OpenAI({ apiKey });
+      aiClient = openai;
+      aiModel = modelName;
+    }
+  } catch (error) {
+    console.error(`Failed to initialize ${provider}:`, error);
   }
 }
 
-// Initial initialization if key exists
-const config = getConfig();
-initializeGemini(config.GOOGLE_API_KEY, config.SELECTED_MODEL);
-
-// Enable hot reloading during development
-if (process.argv.includes('--enable-hot-reload')) {
-  require('electron-reload')(__dirname, {
-    electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
-    hardResetMethod: 'exit',
-    ignored: /node_modules|[\\]\./
-  });
-}
+// Initial initialization
+const initialConfig = getConfig();
+initializeAI(
+  initialConfig.activeProvider,
+  initialConfig.providers[initialConfig.activeProvider].apiKey,
+  initialConfig.providers[initialConfig.activeProvider].selectedModel
+);
 
 function createWindow() {
   // Create a browser window with 50% larger dimensions
@@ -69,13 +109,8 @@ function createWindow() {
     },
   });
 
-  // Load the HTML file
   win.loadFile('src/index.html');
-
-  // Remove the default menu
   Menu.setApplicationMenu(null);
-
-  // Hide window from screen capture
   win.setContentProtection(true);
 
   // Make window movable
@@ -97,83 +132,75 @@ function createWindow() {
     }
   });
 
-  // Handle window focus
-  win.on('blur', () => {
-    // Optionally minimize focus loss impact
-  });
-
-  // Handle window close
   win.on('closed', () => {
     win = null;
   });
 }
 
-// Handle Gemini API calls via IPC
-ipcMain.handle('send-to-gemini', async (event, userMessage, chatHistory) => {
-  try {
-    if (!model) {
-      throw new Error('API Key not configured. Please set your API key.');
-    }
-    const chat = model.startChat({ history: chatHistory });
-    const result = await chat.sendMessage(userMessage);
-    return result.response.text();
-  } catch (error) {
-    throw new Error(`Gemini API error: ${error.message}`);
+// IPC Handlers
+ipcMain.handle('send-to-ai', async (event, userMessage, chatHistory) => {
+  const config = getConfig();
+  const provider = config.activeProvider;
+  const providerConfig = config.providers[provider];
+
+  if (!aiModel || !providerConfig.apiKey) {
+    throw new Error('AI not configured. Please set your API key in settings.');
   }
+
+  try {
+    if (provider === 'google') {
+      const chat = aiModel.startChat({ history: chatHistory });
+      const result = await chat.sendMessage(userMessage);
+      return result.response.text();
+    } else if (provider === 'openai') {
+      // Convert Gemini style history to OpenAI style
+      const messages = chatHistory.map(h => ({
+        role: h.role === 'user' ? 'user' : 'assistant',
+        content: h.parts[0].text
+      }));
+      messages.push({ role: 'user', content: userMessage });
+
+      const response = await aiClient.chat.completions.create({
+        model: providerConfig.selectedModel,
+        messages: messages,
+      });
+      return response.choices[0].message.content;
+    }
+  } catch (error) {
+    throw new Error(`${provider} API error: ${error.message}`);
+  }
+});
+
+// Legacy handler for compatibility during transition
+ipcMain.handle('send-to-gemini', async (event, msg, history) => {
+  return await ipcMain.emit('send-to-ai', event, msg, history);
+});
+
+ipcMain.handle('get-config', () => getConfig());
+
+ipcMain.handle('save-config', (event, newConfig) => {
+  saveConfig(newConfig);
+  const provider = newConfig.activeProvider;
+  const pConfig = newConfig.providers[provider];
+  initializeAI(provider, pConfig.apiKey, pConfig.selectedModel);
+  return { success: true };
 });
 
 ipcMain.handle('check-api-key', () => {
-  return !!getConfig().GOOGLE_API_KEY;
+  const config = getConfig();
+  return !!config.providers[config.activeProvider].apiKey;
 });
 
-ipcMain.handle('get-config', () => {
-  return getConfig();
-});
-
-ipcMain.handle('save-api-key', (event, apiKey) => {
-  try {
-    const config = getConfig();
-    config.GOOGLE_API_KEY = apiKey;
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    initializeGemini(apiKey, config.SELECTED_MODEL);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('save-model', (event, modelName) => {
-  try {
-    const config = getConfig();
-    config.SELECTED_MODEL = modelName;
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    if (config.GOOGLE_API_KEY) {
-      initializeGemini(config.GOOGLE_API_KEY, modelName);
-    }
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-// Create window when app is ready
 app.whenReady().then(createWindow);
 
-// Quit app when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
-// Recreate window on macOS when dock icon is clicked
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// Clean up shortcuts on app quit
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });

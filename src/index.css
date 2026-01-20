@@ -75,10 +75,13 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.model-selector-wrapper {
-  position: relative;
+.selectors-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
+#provider-select,
 #model-select {
   background: var(--glass-bg);
   color: var(--text-primary);
@@ -98,19 +101,55 @@ body {
   background-position: right 8px center;
 }
 
+#provider-select:hover,
 #model-select:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: var(--accent-primary);
 }
 
+#provider-select:focus,
 #model-select:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
+#provider-select option,
 #model-select option {
   background: var(--bg-slate);
   color: var(--text-primary);
+}
+
+/* Setup Form Styling */
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.setup-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setup-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.setup-group select {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
 }
 
 /* Chat Section */
