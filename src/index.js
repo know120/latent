@@ -56,8 +56,9 @@ function createWindow() {
   let win = new BrowserWindow({
     width: 800,
     height: 600,
+    icon: path.join(__dirname, 'logo.svg'),
     // frame: false,
-    title: 'Latent Chat',
+    title: 'Latent',
     resizable: true,
     // transparent: true,
     alwaysOnTop: false,

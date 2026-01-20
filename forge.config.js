@@ -4,12 +4,16 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: './src/logo'
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        iconUrl: 'https://raw.githubusercontent.com/know120/latent/main/src/logo.ico', // Placeholder if remote is needed, but local icon is priority
+        setupIcon: './src/logo.svg',
+      },
     },
     {
       name: '@electron-forge/maker-zip',

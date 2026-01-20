@@ -53,6 +53,18 @@ body {
   z-index: 10;
 }
 
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
 #title-container h1 {
   font-size: 1.1rem;
   font-weight: 600;
