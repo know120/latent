@@ -6,6 +6,14 @@ const chatInput = document.getElementById('chat-input');
 const chatContainer = document.getElementById('chat-container');
 const sendButton = document.getElementById('send-button');
 
+// API Modal elements
+const apiModal = document.getElementById('api-modal');
+const apiKeyInput = document.getElementById('api-key-input');
+const toggleVisibilityBtn = document.getElementById('toggle-api-visibility');
+const eyeIcon = toggleVisibilityBtn.querySelector('.eye-icon');
+const eyeOffIcon = toggleVisibilityBtn.querySelector('.eye-off-icon');
+const saveApiKeyButton = document.getElementById('save-api-key-button');
+
 // Function to add a message to the chat
 function addMessage(text, sender) {
   const messageDiv = document.createElement('div');
@@ -70,3 +78,54 @@ chatInput.addEventListener('keypress', (e) => {
 });
 
 sendButton.addEventListener('click', handleSendMessage);
+
+// API Key Logic
+async function checkApiKey() {
+  const isKeySet = await ipcRenderer.invoke('check-api-key');
+  if (!isKeySet) {
+    apiModal.style.display = 'flex';
+  } else {
+    apiModal.style.display = 'none';
+    chatInput.focus();
+  }
+}
+
+toggleVisibilityBtn.addEventListener('click', () => {
+  const isPassword = apiKeyInput.type === 'password';
+  apiKeyInput.type = isPassword ? 'text' : 'password';
+  eyeIcon.style.display = isPassword ? 'none' : 'block';
+  eyeOffIcon.style.display = isPassword ? 'block' : 'none';
+});
+
+saveApiKeyButton.addEventListener('click', async () => {
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) return;
+
+  saveApiKeyButton.disabled = true;
+  saveApiKeyButton.textContent = 'Saving...';
+
+  try {
+    const result = await ipcRenderer.invoke('save-api-key', apiKey);
+    if (result.success) {
+      apiModal.style.display = 'none';
+      addMessage('API Key saved successfully! You can now start chatting.', 'ai');
+      chatInput.focus();
+    } else {
+      alert(`Error saving API key: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  } finally {
+    saveApiKeyButton.disabled = false;
+    saveApiKeyButton.textContent = 'Save Key';
+  }
+});
+
+apiKeyInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    saveApiKeyButton.click();
+  }
+});
+
+// Initialize on load
+checkApiKey();
