@@ -10,34 +10,37 @@ dotenv.config({ path: envPath });
 
 const configPath = path.join(app.getPath('userData'), 'config.json');
 
-function getStoredApiKey() {
-  if (process.env.GOOGLE_API_KEY) {
-    return process.env.GOOGLE_API_KEY;
-  }
+function getConfig() {
+  const config = {
+    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || null,
+    SELECTED_MODEL: 'gemini-2.5-flash'
+  };
+
   if (fs.existsSync(configPath)) {
     try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      return config.GOOGLE_API_KEY;
+      const storedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (storedConfig.GOOGLE_API_KEY) config.GOOGLE_API_KEY = storedConfig.GOOGLE_API_KEY;
+      if (storedConfig.SELECTED_MODEL) config.SELECTED_MODEL = storedConfig.SELECTED_MODEL;
     } catch (e) {
       console.error('Error reading config file:', e);
     }
   }
-  return null;
+  return config;
 }
 
 let genAI;
 let model;
 
-function initializeGemini(apiKey) {
+function initializeGemini(apiKey, modelName = 'gemini-2.5-flash') {
   if (apiKey) {
     genAI = new GoogleGenerativeAI(apiKey);
-    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    model = genAI.getGenerativeModel({ model: modelName });
   }
 }
 
 // Initial initialization if key exists
-const initialApiKey = getStoredApiKey();
-initializeGemini(initialApiKey);
+const config = getConfig();
+initializeGemini(config.GOOGLE_API_KEY, config.SELECTED_MODEL);
 
 // Enable hot reloading during development
 if (process.argv.includes('--enable-hot-reload')) {
@@ -119,14 +122,33 @@ ipcMain.handle('send-to-gemini', async (event, userMessage, chatHistory) => {
 });
 
 ipcMain.handle('check-api-key', () => {
-  return !!getStoredApiKey();
+  return !!getConfig().GOOGLE_API_KEY;
+});
+
+ipcMain.handle('get-config', () => {
+  return getConfig();
 });
 
 ipcMain.handle('save-api-key', (event, apiKey) => {
   try {
-    const config = { GOOGLE_API_KEY: apiKey };
+    const config = getConfig();
+    config.GOOGLE_API_KEY = apiKey;
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    initializeGemini(apiKey);
+    initializeGemini(apiKey, config.SELECTED_MODEL);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-model', (event, modelName) => {
+  try {
+    const config = getConfig();
+    config.SELECTED_MODEL = modelName;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    if (config.GOOGLE_API_KEY) {
+      initializeGemini(config.GOOGLE_API_KEY, modelName);
+    }
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

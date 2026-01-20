@@ -14,6 +14,9 @@ const eyeIcon = toggleVisibilityBtn.querySelector('.eye-icon');
 const eyeOffIcon = toggleVisibilityBtn.querySelector('.eye-off-icon');
 const saveApiKeyButton = document.getElementById('save-api-key-button');
 
+// Model Selector elements
+const modelSelect = document.getElementById('model-select');
+
 // Function to add a message to the chat
 function addMessage(text, sender) {
   const messageDiv = document.createElement('div');
@@ -79,16 +82,33 @@ chatInput.addEventListener('keypress', (e) => {
 
 sendButton.addEventListener('click', handleSendMessage);
 
-// API Key Logic
-async function checkApiKey() {
-  const isKeySet = await ipcRenderer.invoke('check-api-key');
-  if (!isKeySet) {
+// API Key & Model Logic
+async function initApp() {
+  const config = await ipcRenderer.invoke('get-config');
+
+  if (config.SELECTED_MODEL) {
+    modelSelect.value = config.SELECTED_MODEL;
+  }
+
+  if (!config.GOOGLE_API_KEY) {
     apiModal.style.display = 'flex';
   } else {
     apiModal.style.display = 'none';
     chatInput.focus();
   }
 }
+
+modelSelect.addEventListener('change', async () => {
+  const modelName = modelSelect.value;
+  try {
+    const result = await ipcRenderer.invoke('save-model', modelName);
+    if (!result.success) {
+      alert(`Error switching model: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+});
 
 toggleVisibilityBtn.addEventListener('click', () => {
   const isPassword = apiKeyInput.type === 'password';
@@ -128,4 +148,4 @@ apiKeyInput.addEventListener('keypress', (e) => {
 });
 
 // Initialize on load
-checkApiKey();
+initApp();
