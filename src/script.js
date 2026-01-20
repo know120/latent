@@ -4,14 +4,24 @@ const { ipcRenderer } = require('electron');
 const chatArea = document.getElementById('chat-area');
 const chatInput = document.getElementById('chat-input');
 const chatContainer = document.getElementById('chat-container');
+const sendButton = document.getElementById('send-button');
 
 // Function to add a message to the chat
 function addMessage(text, sender) {
   const messageDiv = document.createElement('div');
   messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
-  messageDiv.innerText = text;
+
+  // Basic markdown-like formatting for newlines
+  const formattedText = text.replace(/\n/g, '<br>');
+  messageDiv.innerHTML = formattedText;
+
   chatArea.appendChild(messageDiv);
-  chatContainer.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+
+  // Smooth scroll to bottom
+  chatContainer.scrollTo({
+    top: chatArea.scrollHeight,
+    behavior: 'smooth'
+  });
 }
 
 // Initialize chat history
@@ -23,32 +33,40 @@ let chatHistory = [
 // Display initial welcome message
 addMessage('Welcome to Latent Chat! How can I assist you?', 'ai');
 
-// Handle input submission
-chatInput.addEventListener('keypress', async (e) => {
-  if (e.key === 'Enter' && chatInput.value.trim()) {
-    const originalPlaceHolder = chatInput.placeHolder;
-    const userMessage = chatInput.value.trim();
-    addMessage(userMessage, 'user');
-    chatInput.value = ''; // Clear input
-    chatInput.disabled = true;
-    chatInput.placeHolder = 'Thinking...';
-    
-    try {
-      // Send message to main process for Gemini API call
-      const aiResponse = await ipcRenderer.invoke('send-to-gemini', userMessage, chatHistory);
-      addMessage(aiResponse, 'ai');
-      
-      // Update chat history
-      chatHistory.push(
-        { role: 'user', parts: [{ text: userMessage }] },
-        { role: 'model', parts: [{ text: aiResponse }] }
-      );
-    } catch (error) {
-      addMessage(`Error: ${error.message}`, 'ai');
-    } finally{
-      chatInput.disabled = false;
-      chatInput.placeHolder = originalPlaceHolder;
-    }
+async function handleSendMessage() {
+  const userMessage = chatInput.value.trim();
+  if (!userMessage) return;
 
+  const originalPlaceholder = chatInput.placeholder;
+  addMessage(userMessage, 'user');
+  chatInput.value = ''; // Clear input
+  chatInput.disabled = true;
+  chatInput.placeholder = 'Thinking...';
+
+  try {
+    // Send message to main process for Gemini API call
+    const aiResponse = await ipcRenderer.invoke('send-to-gemini', userMessage, chatHistory);
+    addMessage(aiResponse, 'ai');
+
+    // Update chat history
+    chatHistory.push(
+      { role: 'user', parts: [{ text: userMessage }] },
+      { role: 'model', parts: [{ text: aiResponse }] }
+    );
+  } catch (error) {
+    addMessage(`Error: ${error.message} `, 'ai');
+  } finally {
+    chatInput.disabled = false;
+    chatInput.placeholder = originalPlaceholder;
+    chatInput.focus();
+  }
+}
+
+// Handle input submission
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    handleSendMessage();
   }
 });
+
+sendButton.addEventListener('click', handleSendMessage);

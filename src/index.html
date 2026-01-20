@@ -3,6 +3,9 @@
 
 <head>
   <title>Latent Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
 
@@ -16,7 +19,14 @@
     </div>
   </div>
   <div id="input-container">
-    <input type="text" id="chat-input" placeholder="Type your message..." />
+    <div class="input-wrapper">
+      <input type="text" id="chat-input" placeholder="Type your message..." />
+      <button id="send-button" title="Send message">
+        <svg viewBox="0 0 24 24">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+        </svg>
+      </button>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
