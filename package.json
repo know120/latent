@@ -2,13 +2,12 @@
   "name": "latent",
   "productName": "latent",
   "version": "1.0.0",
-  "description": "My Electron application description",
-  "main": "src/index.js",
+  "description": "AI chat application built with Tauri 2 + React + Vite",
   "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "npx tauri dev",
+    "package": "npx tauri build",
     "lint": "echo \"No linting configured\""
   },
   "keywords": [],
@@ -18,24 +17,17 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "dotenv": "^16.4.5",
-    "electron-squirrel-startup": "^1.0.1",
-    "openai": "^6.16.0"
+    "@tauri-apps/plugin-global-shortcut": "^2.3.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.1",
-    "@electron-forge/maker-deb": "^7.8.1",
-    "@electron-forge/maker-rpm": "^7.8.1",
-    "@electron-forge/maker-squirrel": "^7.8.1",
-    "@electron-forge/maker-zip": "^7.8.1",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
-    "@electron-forge/plugin-fuses": "^7.8.1",
-    "@electron/fuses": "^1.8.0",
-    "@google/generative-ai": "^0.21.0",
-    "dotenv": "^16.4.5",
-    "electron": "36.4.0",
-    "electron-reload": "^2.0.0-alpha.1",
-    "rpmbuild": "^0.0.23"
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "@vitejs/plugin-react": "^6.0.2",
+    "sharp": "^0.34.5",
+    "vite": "^8.0.16"
   }
 }

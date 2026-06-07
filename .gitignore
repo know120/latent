@@ -90,3 +90,14 @@ typings/
 
 # Electron-Forge
 out/
+
+# Build output
+dist/
+
+# Rust / Tauri
+src-tauri/target/
+
+# Tauri artifacts
+*.wasm
+*.pdb
+*.d.ts
